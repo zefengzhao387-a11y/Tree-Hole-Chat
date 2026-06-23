@@ -1,19 +1,19 @@
+# 云端从仓库根目录部署后端时使用（Railway / Zeabur）
+# 本地开发请用 backend/Dockerfile 或 docker-compose
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# 安装系统依赖（Chroma 需要）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY backend/ .
 
-# 创建数据目录
 RUN mkdir -p /app/data/chroma_db
 
 EXPOSE 8000

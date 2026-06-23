@@ -1,4 +1,5 @@
 import api, { getAuthToken } from './index'
+import { API_BASE } from './base'
 
 export const chatAPI = {
   getHistory() {
@@ -11,7 +12,7 @@ export const chatAPI = {
     const headers = { 'Content-Type': 'application/json' }
     const token = getAuthToken()
     if (token) headers.Authorization = `Bearer ${token}`
-    return fetch('/api/chat/send', {
+    return fetch(`${API_BASE}/chat/send`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ message }),

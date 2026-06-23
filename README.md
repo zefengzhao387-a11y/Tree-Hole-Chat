@@ -30,7 +30,7 @@
 | **RAG框架** | LangChain + Chroma |
 | **后端** | FastAPI + SQLAlchemy + SSE |
 | **前端** | Vue 3 + Vite + Element Plus + ECharts |
-| **部署** | Docker + docker-compose |
+| **部署** | Docker + docker-compose / Vercel + Railway |
 
 ## 🚀 快速开始
 
@@ -80,6 +80,120 @@ docker-compose up -d
 
 # 访问 http://localhost:5173
 ```
+
+## ☁️ 云端部署（Vercel 前端 + Railway 后端）
+
+推荐架构：前端静态页放 **Vercel**，FastAPI + SQLite + Chroma 放 **Railway**（数据也在 Railway 磁盘上，是「云上的 SQLite 文件」）。
+
+```
+浏览器 → Vercel（Vue） → Railway（FastAPI + data/diary.db + chroma_db/）
+```
+
+### 第一步：部署后端到 Railway
+
+1. 打开 [Railway](https://railway.app)，用 GitHub 导入本仓库
+2. 新建 Service → **Root Directory 选 `backend`**
+3. Railway 会读取 `backend/Dockerfile` 构建镜像
+4. 在 **Variables** 里配置环境变量：
+
+| 变量 | 示例 | 说明 |
+|------|------|------|
+| `DEEPSEEK_API_KEY` | `sk-xxx` | DeepSeek 密钥 |
+| `DATABASE_URL` | `sqlite+aiosqlite:///./data/diary.db` | 默认即可 |
+| `CHROMA_PERSIST_DIRECTORY` | `./data/chroma_db` | 默认即可 |
+| `JWT_SECRET` | 随机长字符串 | 生产必改 |
+| `CORS_ORIGINS` | `https://xxx.vercel.app` | 部署前端后填入 Vercel 域名 |
+
+5. **挂载持久卷（重要）**：Service → Settings → Volumes → 添加 Volume，挂载到 `/app/data`  
+   否则重新部署后 SQLite 和 Chroma 数据会丢失。
+6. 部署完成后复制公网地址，例如 `https://treehole-api.up.railway.app`
+7. 浏览器访问 `https://treehole-api.up.railway.app/api/system/health`，应返回 `{"status":"ok",...}`
+
+> Render 同理：选 Docker 部署、`backend` 目录、挂载 `/app/data`、配置相同环境变量。平台会注入 `PORT`，Dockerfile 已支持。
+
+### 第二步：部署前端到 Vercel
+
+1. 打开 [Vercel](https://vercel.com)，导入同一 GitHub 仓库
+2. **Root Directory 选 `frontend`**
+3. Framework Preset：**Vite**（Build: `npm run build`，Output: `dist`）
+4. 在 **Environment Variables** 添加：
+
+| 变量 | 值 |
+|------|-----|
+| `VITE_API_BASE_URL` | `https://treehole-api.up.railway.app/api` |
+
+注意：末尾要带 `/api`，与本地开发 axios 的 baseURL 一致。
+
+5. Deploy。`frontend/vercel.json` 已配置 SPA 路由，刷新子页面不会 404。
+
+### 第三步：回填 CORS
+
+前端部署完成后，把 Vercel 域名（如 `https://treehole.vercel.app`）写回 Railway 的 `CORS_ORIGINS`，重新部署后端。
+
+### 本地开发与线上差异
+
+| 环境 | API 地址 |
+|------|----------|
+| 本地 | 不配置 `VITE_API_BASE_URL`，走 Vite 代理 `/api` → `127.0.0.1:8000` |
+| Vercel | `VITE_API_BASE_URL=https://你的后端/api` |
+
+树洞对话的 SSE 请求（`chat.js`）同样使用该变量，无需额外配置。
+
+## ☁️ 云端部署（前后端都在 Railway）
+
+同一仓库里建 **两个 Service**，都在 Railway 上，不必再用 Vercel。
+
+```
+浏览器 → Railway 前端 Service（Nginx 静态页）
+              ↓ 直连 HTTPS
+         Railway 后端 Service（FastAPI + SQLite + Chroma）
+```
+
+### 和 Vercel 方案的区别
+
+| | Vercel + Railway | 全 Railway |
+|---|---|---|
+| 前端 | Vercel 托管静态文件 | Railway Docker（Nginx） |
+| 后端 | Railway | Railway |
+| 公网地址 | 两个域名 | 两个域名（或自定义域名） |
+| 配置 | 前端 `VITE_API_BASE_URL` | 同样要设，且在 **构建时** 生效 |
+
+### 第一步：部署后端
+
+与上文相同：
+
+1. New Service → Root Directory = **`backend`**
+2. 环境变量：`DEEPSEEK_API_KEY`、`JWT_SECRET` 等
+3. Volume 挂载 **`/app/data`**
+4. 记下公网地址，例如 `https://treehole-api.up.railway.app`
+5. 验证 `/api/system/health`
+
+### 第二步：部署前端
+
+1. 同一 Project 里再 **New Service** → Root Directory = **`frontend`**
+2. 在 **Variables** 添加（Railway 会在 Docker 构建时传给 Vite）：
+
+| 变量 | 值 |
+|------|-----|
+| `VITE_API_BASE_URL` | `https://treehole-api.up.railway.app/api` |
+
+3. Deploy。访问前端公网地址即可。
+
+> 前端 Dockerfile 已支持构建期注入 `VITE_API_BASE_URL`。不设则默认 `/api`（适合 docker-compose 本地一键部署，由 Nginx 反代到 `backend:8000`）。
+
+### 第三步：回填 CORS
+
+后端 Variables 增加：
+
+```
+CORS_ORIGINS=https://你的前端.up.railway.app
+```
+
+重新部署后端。
+
+### 可选：只暴露一个域名
+
+若希望用户只访问一个 URL，可改 Nginx 把 `/api` 反代到后端 **Railway 内网地址**（Private Networking），前端构建时不设 `VITE_API_BASE_URL`。这需要改 Nginx 配置，课程演示用 **两个 Service + 两个域名** 更简单。
 
 ## 📁 项目结构
 

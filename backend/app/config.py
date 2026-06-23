@@ -8,6 +8,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _parse_cors_origins() -> list[str]:
+    raw = os.getenv("CORS_ORIGINS", "")
+    if raw.strip():
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+    ]
+
+
 class Settings:
     """全局配置类"""
 
@@ -41,10 +52,10 @@ class Settings:
 
     # 应用
     APP_HOST: str = os.getenv("APP_HOST", "0.0.0.0")
-    APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
+    APP_PORT: int = int(os.getenv("PORT", os.getenv("APP_PORT", "8000")))
 
-    # CORS
-    CORS_ORIGINS: list = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]
+    # CORS（生产环境示例：CORS_ORIGINS=https://xxx.vercel.app,https://xxx.vercel.app）
+    CORS_ORIGINS: list[str] = _parse_cors_origins()
 
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "treehole-dev-secret-change-in-production")
