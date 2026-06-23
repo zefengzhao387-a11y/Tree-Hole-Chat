@@ -66,11 +66,15 @@ def retrieve_context(query: str, user_id: int | None = None) -> tuple[str, list[
     return _build_context_from_docs(docs, allow_rerank=True, query=query)
 
 
-def retrieve_context_light(query: str, user_id: int | None = None) -> tuple[str, list[int]]:
+def retrieve_context_light(
+    query: str,
+    user_id: int | None = None,
+    allowed_diary_ids: set[int] | None = None,
+) -> tuple[str, list[int]]:
     """
     轻量检索：仅混合检索，不额外调用 LLM（对话场景更稳、更快）
     """
-    docs = hybrid_search(query, user_id=user_id)
+    docs = hybrid_search(query, user_id=user_id, allowed_diary_ids=allowed_diary_ids)
     return _build_context_from_docs(docs)
 
 
@@ -87,10 +91,17 @@ def _build_context_from_docs(docs, *, allow_rerank: bool = False, query: str = "
 
     context_parts = []
     diary_ids = []
+    seen_diary_ids = set()
     for i, doc in enumerate(docs):
         diary_id = doc.metadata.get("diary_id")
-        if diary_id:
-            diary_ids.append(diary_id)
+        if diary_id is not None:
+            try:
+                diary_id = int(diary_id)
+            except (TypeError, ValueError):
+                pass
+            if diary_id not in seen_diary_ids:
+                seen_diary_ids.add(diary_id)
+                diary_ids.append(diary_id)
         title = doc.metadata.get("title", "无标题")
         date = doc.metadata.get("date", "未知日期")
         emotion = doc.metadata.get("primary_emotion", "未知")

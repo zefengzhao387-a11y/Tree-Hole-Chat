@@ -68,25 +68,85 @@ def _count_documents(store: Chroma, user_id: int | None = None) -> int:
     """统计可用向量条数，避免 k 大于索引大小"""
     try:
         if user_id is not None:
-            results = store.get(where={"user_id": user_id}, include=[])
-            return len(results.get("ids") or [])
+            for uid in (user_id, str(user_id)):
+                results = store.get(where={"user_id": uid}, include=[])
+                ids = results.get("ids") or []
+                if ids:
+                    return len(ids)
+            return 0
         return store._collection.count()
     except Exception:
         return 0
 
 
-def similarity_search(query: str, top_k: int | None = None, user_id: int | None = None) -> List[Document]:
+def _doc_belongs_to_user(
+    doc: Document,
+    user_id: int,
+    allowed_diary_ids: set[int] | None = None,
+) -> bool:
+    meta_uid = doc.metadata.get("user_id")
+    if meta_uid is not None:
+        return str(meta_uid) == str(user_id)
+
+    diary_id = doc.metadata.get("diary_id")
+    if diary_id is None or not allowed_diary_ids:
+        return False
+    try:
+        return int(diary_id) in allowed_diary_ids
+    except (TypeError, ValueError):
+        return False
+
+
+def _filter_docs_for_user(
+    docs: List[Document],
+    user_id: int,
+    allowed_diary_ids: set[int] | None = None,
+    limit: int | None = None,
+) -> List[Document]:
+    filtered = [
+        doc for doc in docs
+        if _doc_belongs_to_user(doc, user_id, allowed_diary_ids)
+    ]
+    return filtered[:limit] if limit else filtered
+
+
+def similarity_search(
+    query: str,
+    top_k: int | None = None,
+    user_id: int | None = None,
+    allowed_diary_ids: set[int] | None = None,
+) -> List[Document]:
     """向量相似度检索，可按用户过滤"""
     store = get_vector_store()
-    available = _count_documents(store, user_id)
-    if available == 0:
+    k = top_k or settings.RETRIEVAL_TOP_K
+    total = _count_documents(store, None)
+    if total == 0:
         return []
 
-    k = min(top_k or settings.RETRIEVAL_TOP_K, available)
-    kwargs = {"k": k}
     if user_id is not None:
-        kwargs["filter"] = {"user_id": user_id}
-    return store.similarity_search(query, **kwargs)
+        available = _count_documents(store, user_id)
+        if available > 0:
+            search_k = min(k, available)
+            for uid in (user_id, str(user_id)):
+                try:
+                    return store.similarity_search(
+                        query,
+                        k=search_k,
+                        filter={"user_id": uid},
+                    )
+                except Exception:
+                    continue
+
+        # 旧向量可能没有 user_id 字段：先全库检索，再按用户日记过滤
+        search_k = min(max(k * 3, k), total)
+        raw_docs = store.similarity_search(query, k=search_k)
+        filtered = _filter_docs_for_user(raw_docs, user_id, allowed_diary_ids, limit=k)
+        if filtered:
+            return filtered
+
+    available = total
+    search_k = min(k, available)
+    return store.similarity_search(query, k=search_k)
 
 
 def reset_vector_store():

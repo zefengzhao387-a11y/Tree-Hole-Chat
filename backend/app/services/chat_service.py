@@ -132,6 +132,14 @@ async def _stream_llm(messages_for_llm, llm) -> AsyncGenerator[str, None]:
             yield _sse_payload(piece)
 
 
+async def _get_user_diary_ids(user_id: int) -> set[int]:
+    from app.models.diary import Diary
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Diary.id).where(Diary.user_id == user_id))
+        return set(result.scalars().all())
+
+
 async def chat_stream(
     user_id: int,
     user_message: str,
@@ -151,8 +159,12 @@ async def chat_stream(
         history_str = format_history(history_msgs)
 
     try:
+        allowed_diary_ids = await _get_user_diary_ids(user_id)
         context, diary_ids = await asyncio.to_thread(
-            retrieve_context_light, user_message, user_id
+            retrieve_context_light,
+            user_message,
+            user_id,
+            allowed_diary_ids,
         )
     except Exception as rag_err:
         logger.warning("RAG retrieve failed, continue without context: %s", rag_err)
@@ -191,5 +203,6 @@ async def chat_stream(
         yield _sse_payload(
             _user_facing_llm_error(e),
             done=True,
+            diary_ids=diary_ids,
             error=str(e),
         )

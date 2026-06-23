@@ -26,7 +26,7 @@
 
         <div v-for="m in messages" :key="m.id" class="msg" :class="m.role">
           <div class="bubble" v-html="render(m.content)"></div>
-          <p v-if="m.role === 'assistant' && m.diary_ids?.length" class="ref">
+          <p v-if="m.role === 'assistant' && hasDiaryRefs(m.diary_ids)" class="ref">
             关联日记 #{{ parseIds(m.diary_ids).join(', #') }}
           </p>
         </div>
@@ -114,6 +114,10 @@ const prompts = [
 function parseIds(ids) {
   if (Array.isArray(ids)) return ids
   try { return JSON.parse(ids) } catch { return [] }
+}
+
+function hasDiaryRefs(ids) {
+  return parseIds(ids).length > 0
 }
 
 function render(t) {

@@ -36,12 +36,20 @@ def bm25_search(query: str, documents: List[Document], top_k: int = 3) -> List[D
     return [doc for doc, _ in doc_score_pairs[:top_k]]
 
 
-def hybrid_search(query: str, user_id: int | None = None) -> List[Document]:
+def hybrid_search(
+    query: str,
+    user_id: int | None = None,
+    allowed_diary_ids: set[int] | None = None,
+) -> List[Document]:
     """
     混合检索：向量语义检索 + BM25 关键词检索
     """
-    semantic_results = similarity_search(query, top_k=settings.RETRIEVAL_TOP_K, user_id=user_id)
-    all_docs = similarity_search(query, top_k=settings.HYBRID_SEARCH_TOP_K, user_id=user_id)
+    semantic_results = similarity_search(
+        query, top_k=settings.RETRIEVAL_TOP_K, user_id=user_id, allowed_diary_ids=allowed_diary_ids
+    )
+    all_docs = similarity_search(
+        query, top_k=settings.HYBRID_SEARCH_TOP_K, user_id=user_id, allowed_diary_ids=allowed_diary_ids
+    )
     keyword_results = bm25_search(query, all_docs, top_k=3)
 
     # 3. 合并去重（按 diary_id）
