@@ -92,6 +92,22 @@ def _sse_payload(content: str, *, done: bool = False, diary_ids=None, error: str
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def _user_facing_llm_error(exc: Exception) -> str:
+    msg = str(exc)
+    if "402" in msg or "Insufficient Balance" in msg:
+        return "\n\n(DeepSeek API 余额不足，请在 platform.deepseek.com 充值后重试。)"
+    if "401" in msg or "Authentication" in msg or "invalid api key" in msg.lower():
+        return "\n\n(DeepSeek API Key 无效，请检查 Railway 环境变量 DEEPSEEK_API_KEY。)"
+    if "429" in msg or "rate limit" in msg.lower():
+        return "\n\n(请求太频繁了，稍等几秒再试试吧。)"
+    return "\n\n(抱歉，我现在有点走神了...可以再说一次吗？)"
+
+
+def _is_non_retryable_llm_error(exc: Exception) -> bool:
+    msg = str(exc)
+    return any(token in msg for token in ("402", "401", "Insufficient Balance", "invalid api key"))
+
+
 async def _stream_llm(messages_for_llm, llm) -> AsyncGenerator[str, None]:
     """流式生成；失败时降级为非流式"""
     got_content = False
@@ -104,6 +120,8 @@ async def _stream_llm(messages_for_llm, llm) -> AsyncGenerator[str, None]:
         if not got_content:
             raise RuntimeError("LLM stream returned empty response")
     except Exception as stream_err:
+        if _is_non_retryable_llm_error(stream_err):
+            raise stream_err
         logger.warning("chat stream failed, fallback to invoke: %s", stream_err)
         llm_sync = get_llm(temperature=0.7, streaming=False)
         response = await asyncio.to_thread(llm_sync.invoke, messages_for_llm)
@@ -171,7 +189,7 @@ async def chat_stream(
     except Exception as e:
         logger.exception("chat_stream failed: %s", e)
         yield _sse_payload(
-            "\n\n(抱歉，我现在有点走神了...可以再说一次吗？)",
+            _user_facing_llm_error(e),
             done=True,
             error=str(e),
         )
