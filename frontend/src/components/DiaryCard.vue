@@ -53,8 +53,9 @@ time {
 
 .title {
   font-family: var(--font-handwrite);
-  font-size: 1.1875rem;
+  font-size: 1.25rem;
   font-weight: 400;
+  text-shadow: var(--grass-shadow);
   color: var(--c-wood-deep);
   letter-spacing: 0.06em;
   margin-bottom: 6px;

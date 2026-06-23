@@ -217,11 +217,12 @@ async function submit() {
 
 .auth-head h1 {
   font-family: var(--font-handwrite);
-  font-size: 1.75rem;
+  font-size: 1.875rem;
   font-weight: 400;
   color: var(--c-wood-deep);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.02em;
   margin-bottom: 8px;
+  text-shadow: var(--grass-shadow);
 }
 
 .auth-head p {

@@ -406,20 +406,18 @@ function enterTreeHole() {
 .brand-title {
   display: flex;
   align-items: center;
-  gap: 0.06em;
-  font-family: 'Liu Jian Mao Cao', 'Noto Serif SC', serif;
-  font-size: clamp(2rem, 5vw, 2.75rem);
+  gap: 0.03em;
+  font-family: var(--font-handwrite);
+  font-size: clamp(2.125rem, 5.5vw, 2.875rem);
   font-weight: 400;
-  line-height: 1;
-  letter-spacing: 0.06em;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
 }
 
 .brand-char {
   display: inline-block;
   color: var(--wood-deep);
-  text-shadow:
-    1px 2px 0 rgba(139, 115, 85, 0.12),
-    0 0 24px rgba(90, 122, 98, 0.08);
+  text-shadow: var(--grass-shadow);
   animation:
     brand-char-in 0.7s cubic-bezier(0.34, 1.2, 0.64, 1) backwards,
     brand-char-sway 6s ease-in-out infinite;
@@ -600,12 +598,13 @@ function enterTreeHole() {
 }
 
 .cue-text {
-  font-family: 'Liu Jian Mao Cao', 'Noto Serif SC', serif;
-  font-size: clamp(1.0625rem, 2vw, 1.25rem);
+  font-family: var(--font-handwrite);
+  font-size: clamp(1.125rem, 2.2vw, 1.3125rem);
   font-weight: 400;
   color: #3a342e;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.04em;
   white-space: nowrap;
+  text-shadow: var(--grass-shadow);
   transition:
     color 0.35s ease,
     letter-spacing 0.38s cubic-bezier(0.34, 1.2, 0.64, 1);
@@ -722,13 +721,14 @@ function enterTreeHole() {
 }
 
 .feature-node h3 {
-  font-family: 'Liu Jian Mao Cao', 'Noto Serif SC', serif;
-  font-size: 1.5625rem;
+  font-family: var(--font-handwrite);
+  font-size: 1.625rem;
   font-weight: 400;
   color: #3a342e;
   margin-bottom: 6px;
-  letter-spacing: 0.08em;
-  line-height: 1.25;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  text-shadow: var(--grass-shadow);
 }
 
 .feature-node p {

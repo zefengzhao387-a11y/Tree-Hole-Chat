@@ -54,11 +54,12 @@ const links = [
   align-items: center;
   gap: 8px;
   font-family: var(--font-handwrite);
-  font-size: 1.25rem;
+  font-size: 1.3125rem;
   font-weight: 400;
   color: var(--c-wood-deep);
   text-decoration: none;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.02em;
+  text-shadow: var(--grass-shadow);
 }
 
 .brand-logo {
