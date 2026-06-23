@@ -200,9 +200,15 @@ async def chat_stream(
 
     except Exception as e:
         logger.exception("chat_stream failed: %s", e)
+        error_text = _user_facing_llm_error(e).strip()
         yield _sse_payload(
-            _user_facing_llm_error(e),
+            error_text,
             done=True,
             diary_ids=diary_ids,
             error=str(e),
         )
+        try:
+            async with AsyncSessionLocal() as db:
+                await save_message(db, user_id, "assistant", error_text, diary_ids)
+        except Exception as save_err:
+            logger.exception("save error assistant message failed: %s", save_err)

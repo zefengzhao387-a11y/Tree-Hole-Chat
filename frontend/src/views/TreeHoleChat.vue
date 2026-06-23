@@ -31,17 +31,15 @@
           </p>
         </div>
 
-        <ChatTypingIndicator
-          v-if="streaming && !streamText"
-          :hint="typingHint"
-        />
-
-        <div v-else-if="streaming && streamText" class="msg assistant streaming-msg">
-          <div class="bubble streaming-bubble">
-            <span class="stream-content" v-html="render(streamText)"></span>
-            <span class="stream-cursor" aria-hidden="true"></span>
+        <template v-if="streaming">
+          <ChatTypingIndicator v-if="!streamText" :hint="typingHint" />
+          <div v-else class="msg assistant streaming-msg">
+            <div class="bubble streaming-bubble">
+              <span class="stream-content" v-html="render(streamText)"></span>
+              <span class="stream-cursor" aria-hidden="true"></span>
+            </div>
           </div>
-        </div>
+        </template>
         <div ref="endRef"></div>
       </div>
 
@@ -79,6 +77,7 @@ const input = ref('')
 const streaming = ref(false)
 const streamText = ref('')
 const typingHint = ref('小树正在听…')
+const bodyRef = ref(null)
 const endRef = ref(null)
 const inputRef = ref(null)
 
@@ -120,8 +119,20 @@ function hasDiaryRefs(ids) {
   return parseIds(ids).length > 0
 }
 
+function normalizeMessage(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    id: raw.id ?? Date.now(),
+    role: raw.role === 'user' ? 'user' : 'assistant',
+    content: typeof raw.content === 'string' ? raw.content : String(raw.content ?? ''),
+    diary_ids: raw.diary_ids ?? null,
+  }
+}
+
 function render(t) {
-  return t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>')
+  if (t == null) return ''
+  const text = typeof t === 'string' ? t : String(t)
+  return text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>')
 }
 
 function usePrompt(p) {
@@ -176,10 +187,11 @@ async function send() {
           }
           if (d.done) {
             if (d.error) console.error('[chat]', d.error)
+            const reply = (streamText.value || d.content || '').trim()
             messages.value.push({
               id: Date.now(),
               role: 'assistant',
-              content: streamText.value,
+              content: reply || '小树走神了一下，可以再说一次吗？',
               diary_ids: d.diary_ids || [],
             })
             streamText.value = ''
@@ -215,9 +227,13 @@ async function clear() {
 async function loadHistory() {
   try {
     const { data } = await chatAPI.getHistory()
-    messages.value = data.messages
+    const list = Array.isArray(data?.messages) ? data.messages : []
+    messages.value = list.map(normalizeMessage).filter(Boolean)
     await scrollDown()
-  } catch { /* ignore */ }
+  } catch (err) {
+    console.warn('[chat] load history failed:', err)
+    messages.value = []
+  }
 }
 
 onMounted(loadHistory)

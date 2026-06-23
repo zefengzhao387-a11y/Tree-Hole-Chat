@@ -2,7 +2,14 @@
   <div class="layout">
     <NavBar />
     <main class="main" :class="{ 'main-chat': isChat }">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <Suspense>
+          <component :is="Component" />
+          <template #fallback>
+            <div class="route-loading">加载中…</div>
+          </template>
+        </Suspense>
+      </router-view>
     </main>
   </div>
 </template>
@@ -32,5 +39,13 @@ const isChat = computed(() => route.name === 'TreeHoleChat')
 .main-chat {
   max-width: 680px;
   padding-bottom: 24px;
+}
+
+.route-loading {
+  padding: 48px 0;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  color: var(--c-text-muted);
 }
 </style>
