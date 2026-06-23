@@ -54,8 +54,10 @@ class Settings:
     APP_HOST: str = os.getenv("APP_HOST", "0.0.0.0")
     APP_PORT: int = int(os.getenv("PORT", os.getenv("APP_PORT", "8000")))
 
-    # CORS（生产环境示例：CORS_ORIGINS=https://xxx.vercel.app,https://xxx.vercel.app）
+    # CORS（生产：CORS_ORIGINS=https://tree-hole-chat.vercel.app）
+    # Vercel 预览域名每次不同，可设 CORS_ORIGIN_REGEX=https://.*\.vercel\.app
     CORS_ORIGINS: list[str] = _parse_cors_origins()
+    CORS_ORIGIN_REGEX: str = os.getenv("CORS_ORIGIN_REGEX", "")
 
     # JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "treehole-dev-secret-change-in-production")
