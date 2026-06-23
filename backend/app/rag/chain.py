@@ -23,6 +23,8 @@ def get_llm(temperature: float = 0.7, streaming: bool = False) -> ChatOpenAI:
         base_url=settings.DEEPSEEK_BASE_URL,
         temperature=temperature,
         streaming=streaming,
+        timeout=120,
+        max_retries=1,
     )
 
 
@@ -61,16 +63,28 @@ def retrieve_context(query: str, user_id: int | None = None) -> tuple[str, list[
     """
     rewritten_query = rewrite_query(query)
     docs = hybrid_search(rewritten_query, user_id=user_id)
+    return _build_context_from_docs(docs, allow_rerank=True, query=query)
 
+
+def retrieve_context_light(query: str, user_id: int | None = None) -> tuple[str, list[int]]:
+    """
+    轻量检索：仅混合检索，不额外调用 LLM（对话场景更稳、更快）
+    """
+    docs = hybrid_search(query, user_id=user_id)
+    return _build_context_from_docs(docs)
+
+
+def _build_context_from_docs(docs, *, allow_rerank: bool = False, query: str = "") -> tuple[str, list[int]]:
     if not docs:
         return "暂无相关日记", []
 
-    # 3. Re-ranking（可选，需要LLM）
-    if len(docs) > settings.RERANK_TOP_K and settings.DEEPSEEK_API_KEY not in ("", "your_deepseek_api_key_here"):
-        llm = get_llm(temperature=0.3, streaming=False)
-        docs = llm_rerank(query, docs, llm)
+    if allow_rerank and len(docs) > settings.RERANK_TOP_K and settings.DEEPSEEK_API_KEY not in ("", "your_deepseek_api_key_here"):
+        try:
+            llm = get_llm(temperature=0.3, streaming=False)
+            docs = llm_rerank(query, docs, llm)
+        except Exception:
+            docs = docs[:settings.RERANK_TOP_K]
 
-    # 4. 组装上下文
     context_parts = []
     diary_ids = []
     for i, doc in enumerate(docs):

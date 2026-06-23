@@ -1,15 +1,19 @@
 """
 树洞对话业务逻辑
 """
+import asyncio
 import json
+import logging
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, delete
 from app.models.conversation import Conversation
 from app.database import AsyncSessionLocal
-from app.rag.chain import get_llm, retrieve_context
+from app.rag.chain import get_llm, retrieve_context_light
 from app.rag.prompts import TREEHOLE_CHAT_PROMPT
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 async def get_chat_history(db: AsyncSession, user_id: int, limit: int = 50) -> list[Conversation]:
@@ -61,17 +65,80 @@ def format_history(messages: list[Conversation]) -> str:
     return "\n".join(lines)
 
 
+def _extract_chunk_content(content) -> str:
+    if not content:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    return str(content)
+
+
+def _chunk_text(text: str, size: int = 24):
+    for i in range(0, len(text), size):
+        yield text[i:i + size]
+
+
+def _sse_payload(content: str, *, done: bool = False, diary_ids=None, error: str | None = None) -> str:
+    data = {"content": content, "done": done}
+    if diary_ids is not None:
+        data["diary_ids"] = diary_ids
+    if error:
+        data["error"] = error
+    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+async def _stream_llm(messages_for_llm, llm) -> AsyncGenerator[str, None]:
+    """流式生成；失败时降级为非流式"""
+    got_content = False
+    try:
+        async for chunk in llm.astream(messages_for_llm):
+            content = _extract_chunk_content(chunk.content)
+            if content:
+                got_content = True
+                yield _sse_payload(content)
+        if not got_content:
+            raise RuntimeError("LLM stream returned empty response")
+    except Exception as stream_err:
+        logger.warning("chat stream failed, fallback to invoke: %s", stream_err)
+        llm_sync = get_llm(temperature=0.7, streaming=False)
+        response = await asyncio.to_thread(llm_sync.invoke, messages_for_llm)
+        text = _extract_chunk_content(response.content).strip()
+        if not text:
+            raise stream_err
+        for piece in _chunk_text(text):
+            yield _sse_payload(piece)
+
+
 async def chat_stream(
     user_id: int,
     user_message: str,
 ) -> AsyncGenerator[str, None]:
     """流式对话：独立管理 DB session，避免 SSE 期间连接泄漏"""
+    if not settings.DEEPSEEK_API_KEY or settings.DEEPSEEK_API_KEY == "your_deepseek_api_key_here":
+        yield _sse_payload(
+            "\n\n(后端未配置 DEEPSEEK_API_KEY，请联系管理员。)",
+            done=True,
+            error="missing_api_key",
+        )
+        return
+
     async with AsyncSessionLocal() as db:
         await save_message(db, user_id, "user", user_message)
         history_msgs = await get_chat_history(db, user_id)
         history_str = format_history(history_msgs)
 
-    context, diary_ids = retrieve_context(user_message, user_id=user_id)
+    try:
+        context, diary_ids = await asyncio.to_thread(
+            retrieve_context_light, user_message, user_id
+        )
+    except Exception as rag_err:
+        logger.warning("RAG retrieve failed, continue without context: %s", rag_err)
+        context, diary_ids = "暂无相关日记", []
 
     llm = get_llm(temperature=0.7, streaming=True)
     full_response = ""
@@ -83,16 +150,28 @@ async def chat_stream(
             query=user_message,
         )
 
-        async for chunk in llm.astream(messages_for_llm):
-            if chunk.content:
-                full_response += chunk.content
-                yield f"data: {json.dumps({'content': chunk.content, 'done': False}, ensure_ascii=False)}\n\n"
+        async for event in _stream_llm(messages_for_llm, llm):
+            yield event
+            if event.startswith("data:"):
+                try:
+                    payload = json.loads(event[6:].strip())
+                    if payload.get("content") and not payload.get("done"):
+                        full_response += payload["content"]
+                except json.JSONDecodeError:
+                    pass
 
-        yield f"data: {json.dumps({'content': '', 'done': True, 'diary_ids': diary_ids}, ensure_ascii=False)}\n\n"
+        yield _sse_payload("", done=True, diary_ids=diary_ids)
 
-        async with AsyncSessionLocal() as db:
-            await save_message(db, user_id, "assistant", full_response, diary_ids)
+        try:
+            async with AsyncSessionLocal() as db:
+                await save_message(db, user_id, "assistant", full_response, diary_ids)
+        except Exception as save_err:
+            logger.exception("save assistant message failed: %s", save_err)
 
     except Exception as e:
-        error_msg = "\n\n(抱歉，我现在有点走神了...可以再说一次吗？)"
-        yield f"data: {json.dumps({'content': error_msg, 'done': True, 'error': str(e)}, ensure_ascii=False)}\n\n"
+        logger.exception("chat_stream failed: %s", e)
+        yield _sse_payload(
+            "\n\n(抱歉，我现在有点走神了...可以再说一次吗？)",
+            done=True,
+            error=str(e),
+        )

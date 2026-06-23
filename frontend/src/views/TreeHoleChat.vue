@@ -6,7 +6,10 @@
           <span class="avatar">树</span>
           <div>
             <h2>小树</h2>
-            <span class="status">{{ streaming ? '回复中…' : '在线' }}</span>
+            <span class="status" :class="{ live: streaming }">
+              <span v-if="streaming" class="status-dot" aria-hidden="true"></span>
+              {{ streaming ? '回复中' : '在线' }}
+            </span>
           </div>
         </div>
         <button class="btn btn-ghost" @click="clear" :disabled="!messages.length">清空</button>
@@ -28,8 +31,16 @@
           </p>
         </div>
 
-        <div v-if="streaming" class="msg assistant">
-          <div class="bubble" v-html="render(streamText)"></div>
+        <ChatTypingIndicator
+          v-if="streaming && !streamText"
+          :hint="typingHint"
+        />
+
+        <div v-else-if="streaming && streamText" class="msg assistant streaming-msg">
+          <div class="bubble streaming-bubble">
+            <span class="stream-content" v-html="render(streamText)"></span>
+            <span class="stream-cursor" aria-hidden="true"></span>
+          </div>
         </div>
         <div ref="endRef"></div>
       </div>
@@ -46,7 +57,11 @@
           ref="inputRef"
         ></textarea>
         <button class="btn btn-primary send" @click="send" :disabled="!input.trim() || streaming">
-          {{ streaming ? '…' : '发送' }}
+          <span v-if="streaming" class="send-loading">
+            <span class="send-spinner" aria-hidden="true"></span>
+            回复中
+          </span>
+          <span v-else>发送</span>
         </button>
       </footer>
     </div>
@@ -54,16 +69,41 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { chatAPI } from '../api/chat'
+import ChatTypingIndicator from '../components/ChatTypingIndicator.vue'
 
 const messages = ref([])
 const input = ref('')
 const streaming = ref(false)
 const streamText = ref('')
+const typingHint = ref('小树正在听…')
 const endRef = ref(null)
 const inputRef = ref(null)
+
+const typingHints = [
+  '小树正在听…',
+  '翻翻你的日记…',
+  '正在组织语言…',
+]
+let typingTimer = null
+
+function startTypingHints() {
+  let i = 0
+  typingHint.value = typingHints[0]
+  typingTimer = setInterval(() => {
+    i = (i + 1) % typingHints.length
+    typingHint.value = typingHints[i]
+  }, 2200)
+}
+
+function stopTypingHints() {
+  if (typingTimer) {
+    clearInterval(typingTimer)
+    typingTimer = null
+  }
+}
 
 const prompts = [
   '今天有点累…',
@@ -107,6 +147,7 @@ async function send() {
 
   streaming.value = true
   streamText.value = ''
+  startTypingHints()
 
   try {
     const resp = await chatAPI.sendMessage(text)
@@ -124,8 +165,13 @@ async function send() {
         if (!l.startsWith('data: ')) continue
         try {
           const d = JSON.parse(l.slice(6))
-          if (d.content) { streamText.value += d.content; await scrollDown() }
+          if (d.content) {
+            stopTypingHints()
+            streamText.value += d.content
+            await scrollDown()
+          }
           if (d.done) {
+            if (d.error) console.error('[chat]', d.error)
             messages.value.push({
               id: Date.now(),
               role: 'assistant',
@@ -144,6 +190,7 @@ async function send() {
       content: '小树走神了一下，可以再说一次吗？',
     })
   } finally {
+    stopTypingHints()
     streaming.value = false
     await scrollDown()
   }
@@ -170,6 +217,7 @@ async function loadHistory() {
 }
 
 onMounted(loadHistory)
+onUnmounted(stopTypingHints)
 </script>
 
 <style scoped>
@@ -216,9 +264,27 @@ onMounted(loadHistory)
 }
 
 .status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-ui);
   font-size: 0.75rem;
   color: var(--c-primary);
+}
+
+.status.live { color: var(--c-warm); }
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-warm);
+  animation: status-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes status-blink {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
 }
 
 .chat-body {
@@ -279,6 +345,41 @@ onMounted(loadHistory)
 .msg.user { align-self: flex-end; align-items: flex-end; }
 .msg.assistant { align-self: flex-start; }
 
+.streaming-msg {
+  animation: typing-in 0.25s ease;
+}
+
+@keyframes typing-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+.streaming-bubble {
+  display: inline-flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1px;
+}
+
+.stream-content :deep(b) {
+  color: var(--c-wood-deep);
+}
+
+.stream-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  margin-bottom: 2px;
+  background: var(--c-primary);
+  border-radius: 1px;
+  animation: cursor-blink 0.9s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 .bubble {
   padding: 10px 14px;
   border-radius: 14px;
@@ -332,5 +433,32 @@ onMounted(loadHistory)
 
 .chat-input:focus { border-color: var(--c-wood); }
 
-.send { flex-shrink: 0; padding: 10px 18px; }
+.send { flex-shrink: 0; padding: 10px 18px; min-width: 88px; }
+
+.send-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.send-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot,
+  .stream-cursor,
+  .send-spinner {
+    animation: none;
+  }
+}
 </style>

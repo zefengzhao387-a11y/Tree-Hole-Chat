@@ -1,6 +1,8 @@
 """
 FastAPI 应用入口
 """
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +18,13 @@ from app.routers import diary, analysis, chat, auth
 async def lifespan(app: FastAPI):
     """应用生命周期：启动时初始化数据库"""
     await init_db()
+    try:
+        from app.rag.embeddings import get_embeddings
+        await asyncio.to_thread(get_embeddings)
+        logger = logging.getLogger(__name__)
+        logger.info("Embedding model warmed up")
+    except Exception as e:
+        logging.getLogger(__name__).warning("Embedding warmup skipped: %s", e)
     yield
 
 
