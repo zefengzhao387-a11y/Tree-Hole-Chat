@@ -6,6 +6,7 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, delete
 from app.models.conversation import Conversation
+from app.database import AsyncSessionLocal
 from app.rag.chain import get_llm, retrieve_context
 from app.rag.prompts import TREEHOLE_CHAT_PROMPT
 from app.config import settings
@@ -61,16 +62,16 @@ def format_history(messages: list[Conversation]) -> str:
 
 
 async def chat_stream(
-    db: AsyncSession,
     user_id: int,
     user_message: str,
 ) -> AsyncGenerator[str, None]:
-    await save_message(db, user_id, "user", user_message)
+    """流式对话：独立管理 DB session，避免 SSE 期间连接泄漏"""
+    async with AsyncSessionLocal() as db:
+        await save_message(db, user_id, "user", user_message)
+        history_msgs = await get_chat_history(db, user_id)
+        history_str = format_history(history_msgs)
 
     context, diary_ids = retrieve_context(user_message, user_id=user_id)
-
-    history_msgs = await get_chat_history(db, user_id)
-    history_str = format_history(history_msgs)
 
     llm = get_llm(temperature=0.7, streaming=True)
     full_response = ""
@@ -88,7 +89,9 @@ async def chat_stream(
                 yield f"data: {json.dumps({'content': chunk.content, 'done': False}, ensure_ascii=False)}\n\n"
 
         yield f"data: {json.dumps({'content': '', 'done': True, 'diary_ids': diary_ids}, ensure_ascii=False)}\n\n"
-        await save_message(db, user_id, "assistant", full_response, diary_ids)
+
+        async with AsyncSessionLocal() as db:
+            await save_message(db, user_id, "assistant", full_response, diary_ids)
 
     except Exception as e:
         error_msg = "\n\n(抱歉，我现在有点走神了...可以再说一次吗？)"

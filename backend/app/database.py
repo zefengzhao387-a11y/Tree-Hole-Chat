@@ -11,7 +11,11 @@ database_url = settings.DATABASE_URL
 if "sqlite" in database_url and "aiosqlite" not in database_url:
     database_url = database_url.replace("sqlite:///", "sqlite+aiosqlite:///")
 
-engine = create_async_engine(database_url, echo=False)
+engine = create_async_engine(
+    database_url,
+    echo=False,
+    pool_pre_ping=True,
+)
 
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

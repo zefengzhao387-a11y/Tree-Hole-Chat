@@ -16,11 +16,10 @@ router = APIRouter(prefix="/api/chat", tags=["树洞对话"])
 @router.post("/send")
 async def send_message(
     data: ChatRequest,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     return StreamingResponse(
-        chat_service.chat_stream(db, user.id, data.message),
+        chat_service.chat_stream(user.id, data.message),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

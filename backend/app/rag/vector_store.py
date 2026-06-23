@@ -64,10 +64,25 @@ def delete_diary_vectors(diary_id: int):
         pass
 
 
+def _count_documents(store: Chroma, user_id: int | None = None) -> int:
+    """统计可用向量条数，避免 k 大于索引大小"""
+    try:
+        if user_id is not None:
+            results = store.get(where={"user_id": user_id}, include=[])
+            return len(results.get("ids") or [])
+        return store._collection.count()
+    except Exception:
+        return 0
+
+
 def similarity_search(query: str, top_k: int | None = None, user_id: int | None = None) -> List[Document]:
     """向量相似度检索，可按用户过滤"""
     store = get_vector_store()
-    k = top_k or settings.RETRIEVAL_TOP_K
+    available = _count_documents(store, user_id)
+    if available == 0:
+        return []
+
+    k = min(top_k or settings.RETRIEVAL_TOP_K, available)
     kwargs = {"k": k}
     if user_id is not None:
         kwargs["filter"] = {"user_id": user_id}
