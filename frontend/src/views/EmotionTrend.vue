@@ -20,10 +20,11 @@
     </header>
 
     <div class="card pad chart-wrap">
-      <EmotionChart :points="points" />
+      <div v-if="loading" class="chart-loading">加载中…</div>
+      <EmotionChart v-else :points="points" />
     </div>
 
-    <div v-if="report" class="card pad report">
+    <div v-if="!loading && report" class="card pad report">
       <div class="report-head">
         <h2 class="section-label" style="margin:0">心情报告</h2>
         <time>{{ report.start_date }} ~ {{ report.end_date }}</time>
@@ -56,6 +57,7 @@ import EmotionChart from '../components/EmotionChart.vue'
 
 const points = ref([])
 const report = ref(null)
+const loading = ref(true)
 
 function defaultRange() {
   const e = new Date()
@@ -69,6 +71,7 @@ const range = ref(defaultRange())
 async function load() {
   if (!range.value || range.value.length !== 2) return
   const [s, e] = range.value
+  loading.value = true
   try {
     const [t, r] = await Promise.all([
       analysisAPI.getTrend({ start_date: s, end_date: e }),
@@ -76,7 +79,12 @@ async function load() {
     ])
     points.value = t.data.points || []
     report.value = r.data
-  } catch { /* ignore */ }
+  } catch {
+    points.value = []
+    report.value = null
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(load)
@@ -84,6 +92,14 @@ onMounted(load)
 
 <style scoped>
 .chart-wrap { margin-bottom: 16px; }
+
+.chart-loading {
+  text-align: center;
+  padding: 48px 20px;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  color: var(--c-text-dim);
+}
 
 .report-head {
   display: flex;
