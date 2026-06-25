@@ -1,11 +1,18 @@
 <template>
   <div class="page">
     <header class="page-header">
-      <button class="btn btn-ghost" @click="$router.back()">返回</button>
-      <h1 class="page-title" style="flex:1;text-align:center">{{ isEdit ? '编辑日记' : '新日记' }}</h1>
-      <span style="width:52px"></span>
+      <button class="btn btn-ghost back-btn" @click="$router.back()">← 返回</button>
+      <BlurText
+        tag="h1"
+        class="page-title center-title"
+        :text="isEdit ? '编辑日记' : '新日记'"
+        animate-by="chars"
+        :delay="70"
+      />
+      <span class="header-spacer" />
     </header>
 
+    <FadeContent direction="up" :blur="true">
     <div class="card pad form">
       <div class="field">
         <label class="label">标题</label>
@@ -37,13 +44,18 @@
         <span class="count">{{ form.content.length }} / 5000</span>
       </div>
 
-      <button class="btn btn-primary btn-block" :disabled="saving" @click="save">
+      <button class="btn btn-primary btn-block save-btn" :disabled="saving" @click="save">
         {{ saving ? '保存中…' : '保存' }}
       </button>
     </div>
+    </FadeContent>
 
-    <div v-if="analysis" class="card pad analysis">
-      <p class="section-label">AI 情感分析</p>
+    <FadeContent v-if="analysis" direction="up" :delay="150">
+    <div class="card pad analysis">
+      <div class="analysis-head">
+        <p class="section-label">AI 情感分析</p>
+        <span class="analysis-tag">DeepSeek</span>
+      </div>
       <EmotionBadge
         :emotion="analysis.primary_emotion"
         :sentiment="analysis.sentiment"
@@ -54,6 +66,7 @@
         <p>{{ analysis.suggestion }}</p>
       </div>
     </div>
+    </FadeContent>
   </div>
 </template>
 
@@ -63,6 +76,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { diaryAPI } from '../api/diary'
 import EmotionBadge from '../components/EmotionBadge.vue'
+import BlurText from '../components/animate/BlurText.vue'
+import FadeContent from '../components/animate/FadeContent.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -119,6 +134,17 @@ async function save() {
 <style scoped>
 .page-header { align-items: center; }
 
+.center-title {
+  flex: 1;
+  text-align: center;
+}
+
+.center-title::after { display: none !important; }
+
+.header-spacer { width: 72px; flex-shrink: 0; }
+
+.back-btn { font-size: 0.8125rem; padding: 8px 14px; }
+
 .form { margin-bottom: 16px; }
 
 .field { margin-bottom: 22px; }
@@ -128,8 +154,8 @@ async function save() {
 .mood-btn {
   padding: 8px 16px;
   border: 1px solid var(--c-border);
-  border-radius: var(--radius-sm);
-  background: #fff;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.75);
   font-family: var(--font-ui);
   font-size: 0.8125rem;
   color: var(--c-text-dim);
@@ -137,14 +163,20 @@ async function save() {
   transition: all var(--transition);
 }
 
-.mood-btn:hover { border-color: #ddd5cb; }
+.mood-btn:hover {
+  border-color: rgba(184, 137, 94, 0.35);
+  transform: translateY(-1px);
+}
 
 .mood-btn.sel {
-  background: rgba(255, 252, 248, 0.95);
-  border-color: var(--c-wood);
+  background: linear-gradient(135deg, rgba(238, 244, 239, 0.95), rgba(255, 252, 248, 0.95));
+  border-color: var(--c-primary);
   color: var(--c-wood-deep);
   font-weight: 500;
+  box-shadow: 0 2px 10px rgba(90, 122, 98, 0.1);
 }
+
+.save-btn { margin-top: 4px; padding: 13px; font-size: 0.9375rem; }
 
 .count {
   display: block;
@@ -155,27 +187,50 @@ async function save() {
   margin-top: 6px;
 }
 
-.analysis { margin-top: 16px; }
+.analysis {
+  margin-top: 16px;
+  border-top: 2px solid rgba(90, 122, 98, 0.15);
+}
+
+.analysis-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.analysis-tag {
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  padding: 3px 8px;
+  border-radius: 100px;
+  color: var(--c-primary);
+  background: rgba(90, 122, 98, 0.1);
+  border: 1px solid rgba(90, 122, 98, 0.15);
+}
 
 .summary {
   font-style: italic;
   color: var(--c-text-dim);
   font-size: 0.9375rem;
-  line-height: 1.7;
-  margin: 12px 0;
+  line-height: 1.75;
+  margin: 14px 0;
+  padding-left: 12px;
+  border-left: 2px solid rgba(184, 137, 94, 0.35);
 }
 
 .tip {
   padding: 14px 16px;
-  background: var(--c-warm-soft);
+  background: linear-gradient(135deg, var(--c-warm-soft) 0%, rgba(255, 252, 248, 0.9) 100%);
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--c-warm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .tip p {
   font-family: var(--font-ui);
   font-size: 0.875rem;
   color: var(--c-text-dim);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 </style>

@@ -2,7 +2,7 @@
   <div class="page">
     <header class="page-header">
       <div>
-        <h1 class="page-title">{{ greeting }}</h1>
+        <BlurText tag="h1" class="page-title" :text="greeting" animate-by="words" :delay="60" />
         <p class="page-desc">{{ store.total ? `共 ${store.total} 篇日记` : '写下第一篇，开始记录' }}</p>
       </div>
       <button class="btn btn-primary" @click="$router.push('/diary/new')">写日记</button>
@@ -18,22 +18,32 @@
       >{{ m.l }}</button>
     </div>
 
-    <div v-if="store.loading" class="state">加载中…</div>
-
-    <div v-else-if="!store.diaries.length" class="state card pad">
-      <p class="state-title">还没有日记</p>
-      <p class="state-desc">把今天的故事写下来吧</p>
-      <button class="btn btn-primary" style="margin-top:16px" @click="$router.push('/diary/new')">开始写</button>
+    <div v-if="store.loading" class="state-loading">
+      <SkeletonList :count="3" />
     </div>
 
+    <FadeContent v-else-if="!store.diaries.length" direction="up" :blur="true">
+      <div class="state card pad empty-state">
+        <div class="empty-icon" aria-hidden="true">📝</div>
+        <p class="state-title">还没有日记</p>
+        <p class="state-desc">把今天的故事写下来，小树会记住你的心情</p>
+        <button class="btn btn-primary" @click="$router.push('/diary/new')">开始写第一篇</button>
+      </div>
+    </FadeContent>
+
     <div v-else>
-      <DiaryCard
-        v-for="d in store.diaries"
+      <FadeContent
+        v-for="(d, i) in store.diaries"
         :key="d.id"
-        :diary="d"
-        @click="$router.push(`/diary/${d.id}/edit`)"
-        @delete="remove(d.id)"
-      />
+        :delay="i * 80"
+        direction="up"
+      >
+        <DiaryCard
+          :diary="d"
+          @click="$router.push(`/diary/${d.id}/edit`)"
+          @delete="remove(d.id)"
+        />
+      </FadeContent>
     </div>
 
     <div v-if="store.total > 20" class="pager">
@@ -53,6 +63,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useDiaryStore } from '../stores/diary'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import DiaryCard from '../components/DiaryCard.vue'
+import BlurText from '../components/animate/BlurText.vue'
+import FadeContent from '../components/animate/FadeContent.vue'
+import SkeletonList from '../components/ui/SkeletonList.vue'
 
 const store = useDiaryStore()
 const page = ref(1)
@@ -105,10 +118,11 @@ onMounted(load)
 }
 
 .filter-btn {
-  padding: 6px 14px;
-  border: 1px solid var(--c-border);
+  padding: 7px 16px;
+  border: 1px solid rgba(228, 220, 208, 0.8);
   border-radius: 100px;
-  background: var(--c-surface);
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
   font-family: var(--font-ui);
   font-size: 0.8125rem;
   color: var(--c-text-dim);
@@ -116,31 +130,48 @@ onMounted(load)
   transition: all var(--transition);
 }
 
-.filter-btn:hover { border-color: #ddd5cb; color: var(--c-text); }
+.filter-btn:hover {
+  border-color: rgba(184, 137, 94, 0.35);
+  color: var(--c-text);
+  transform: translateY(-1px);
+}
 
 .filter-btn.active {
   background: rgba(255, 252, 248, 0.95);
-  border-color: var(--c-wood);
+  border-color: var(--c-primary);
   color: var(--c-wood-deep);
   font-weight: 500;
+  box-shadow: 0 2px 10px rgba(90, 122, 98, 0.12);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 56px 28px;
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  filter: grayscale(0.2);
 }
 
 .state-title {
   font-family: var(--font-handwrite);
-  font-size: 1.125rem;
+  font-size: 1.375rem;
   font-weight: 400;
   color: var(--c-wood-deep);
   letter-spacing: 0.08em;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
-.state {
-  text-align: center;
-  padding: 48px 24px;
+.state-loading { margin-bottom: 8px; }
+
+.state-desc {
+  font-size: 0.875rem;
   color: var(--c-text-dim);
+  margin-bottom: 20px;
+  line-height: 1.6;
 }
 
-.state-desc { font-size: 0.875rem; }
-
-.pager { display: flex; justify-content: center; margin-top: 24px; }
+.pager { display: flex; justify-content: center; margin-top: 28px; }
 </style>

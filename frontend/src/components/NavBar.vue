@@ -13,18 +13,28 @@
           :to="item.to"
           class="tab"
           active-class="active"
-        >{{ item.label }}</router-link>
+        >
+          {{ item.label }}
+          <span
+            v-if="item.to === '/my' && friendNotify.unreadTotal > 0"
+            class="badge"
+          >{{ friendNotify.unreadTotal > 99 ? '99+' : friendNotify.unreadTotal }}</span>
+        </router-link>
       </nav>
     </div>
   </header>
 </template>
 
 <script setup>
+import { useFriendNotifyStore } from '../stores/friendNotify'
+
+const friendNotify = useFriendNotifyStore()
+
 const links = [
   { to: '/diary', label: '日记' },
   { to: '/chat', label: '树洞' },
   { to: '/trend', label: '心情' },
-  { to: '/settings', label: '设置' },
+  { to: '/my', label: '我的' },
 ]
 </script>
 
@@ -53,7 +63,8 @@ const links = [
   backdrop-filter: blur(18px) saturate(1.08);
   border: 1px solid rgba(255, 255, 255, 0.55);
   box-shadow:
-    0 8px 32px rgba(58, 52, 46, 0.07),
+    0 8px 32px rgba(58, 52, 46, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
@@ -123,6 +134,24 @@ const links = [
   box-shadow:
     0 2px 8px rgba(58, 52, 46, 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin-left: 4px;
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  background: var(--c-negative);
+  vertical-align: middle;
 }
 
 .tab:active {

@@ -12,13 +12,31 @@
   </div>
 </template>
 <script setup>
-import { computed } from 'vue'
+import { computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import NavBar from '../components/NavBar.vue'
 import TreeHoleAmbient from '../components/effects/TreeHoleAmbient.vue'
+import { useAuthStore } from '../stores/auth'
+import { useFriendNotifyStore } from '../stores/friendNotify'
 
 const route = useRoute()
-const isChat = computed(() => route.name === 'TreeHoleChat')
+const auth = useAuthStore()
+const friendNotify = useFriendNotifyStore()
+const isChat = computed(() => route.name === 'TreeHoleChat' || route.name === 'FriendChat')
+
+function syncNotifyPolling() {
+  if (auth.isLoggedIn) {
+    friendNotify.startPolling(() => route)
+  } else {
+    friendNotify.stopPolling()
+  }
+}
+
+watch(() => auth.isLoggedIn, syncNotifyPolling)
+watch(() => route.fullPath, () => friendNotify.poll(() => route))
+
+onMounted(syncNotifyPolling)
+onUnmounted(() => friendNotify.stopPolling())
 </script>
 
 <style scoped>
@@ -45,8 +63,18 @@ const isChat = computed(() => route.name === 'TreeHoleChat')
 .layout-bg-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(247, 242, 234, 0.24);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(247, 242, 234, 0.08), transparent 55%),
+    linear-gradient(180deg, rgba(247, 242, 234, 0.28) 0%, rgba(239, 232, 220, 0.38) 100%);
   pointer-events: none;
+}
+
+.layout-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 120px rgba(58, 52, 46, 0.08);
 }
 
 .main {

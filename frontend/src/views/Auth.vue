@@ -12,10 +12,11 @@
 
       <header class="auth-head">
         <img src="/logo.png" alt="解忧树洞" class="auth-logo" />
-        <h1>进入树洞</h1>
+        <BlurText tag="h1" text="进入树洞" animate-by="chars" :delay="90" />
         <p>登录或注册后，开始记录与倾诉</p>
       </header>
 
+      <FadeContent :delay="300" direction="up">
       <div class="tabs">
         <button :class="{ active: mode === 'login' }" @click="mode = 'login'">登录</button>
         <button :class="{ active: mode === 'register' }" @click="mode = 'register'">注册</button>
@@ -43,6 +44,7 @@
           {{ loading ? '处理中…' : mode === 'login' ? '登录' : '注册并进入' }}
         </button>
       </form>
+      </FadeContent>
     </div>
   </div>
 </template>
@@ -51,6 +53,8 @@
 import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import BlurText from '../components/animate/BlurText.vue'
+import FadeContent from '../components/animate/FadeContent.vue'
 
 const route = useRoute()
 const router = useRouter()

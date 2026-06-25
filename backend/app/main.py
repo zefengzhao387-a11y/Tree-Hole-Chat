@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import init_db, get_db
 from app.models.user import User
 from app.deps.auth import get_current_user
-from app.routers import diary, analysis, chat, auth
+from app.routers import diary, analysis, chat, auth, friends
 
 
 @asynccontextmanager
@@ -50,6 +50,7 @@ app.include_router(auth.router)
 app.include_router(diary.router)
 app.include_router(analysis.router)
 app.include_router(chat.router)
+app.include_router(friends.router)
 
 
 @app.get("/api/system/health")
@@ -87,10 +88,41 @@ async def system_stats(
         select(func.count(Conversation.id)).where(Conversation.user_id == user.id)
     )).scalar() or 0
 
+    from app.models.friendship import Friendship
+    from app.models.friend_message import FriendMessage
+
+    friend_count = (await db.execute(
+        select(func.count(Friendship.id)).where(
+            Friendship.status == "accepted",
+            (Friendship.requester_id == user.id) | (Friendship.addressee_id == user.id),
+        )
+    )).scalar() or 0
+
+    unread_messages = (await db.execute(
+        select(func.count(FriendMessage.id)).where(
+            FriendMessage.receiver_id == user.id,
+            FriendMessage.read_at.is_(None),
+        )
+    )).scalar() or 0
+
+    latest = (await db.execute(
+        select(EmotionAnalysis)
+        .join(Diary, Diary.id == EmotionAnalysis.diary_id)
+        .where(Diary.user_id == user.id)
+        .order_by(EmotionAnalysis.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+
     return {
         "diary_count": diary_count,
         "analysis_count": analysis_count,
         "conversation_count": conv_count,
+        "friend_count": friend_count,
+        "unread_messages": unread_messages,
+        "latest_emotion": latest.primary_emotion if latest else None,
+        "latest_sentiment": latest.sentiment if latest else None,
+        "latest_intensity": latest.intensity if latest else None,
+        "member_since": user.created_at.isoformat() if user.created_at else None,
     }
 
 

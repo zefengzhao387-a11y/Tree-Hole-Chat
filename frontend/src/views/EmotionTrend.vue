@@ -3,7 +3,7 @@
     <header class="page-header stack">
       <div style="width:100%;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
         <div>
-          <h1 class="page-title">心情轨迹</h1>
+          <BlurText tag="h1" class="page-title" text="心情轨迹" animate-by="chars" :delay="80" />
           <p class="page-desc">看见情绪的流动</p>
         </div>
         <el-date-picker
@@ -20,22 +20,26 @@
     </header>
 
     <div class="card pad chart-wrap">
-      <div v-if="loading" class="chart-loading">加载中…</div>
+      <div v-if="loading" class="chart-loading">
+        <span class="loading-dot" /><span class="loading-dot" /><span class="loading-dot" />
+        <p>正在绘制心情轨迹…</p>
+      </div>
       <EmotionChart v-else :points="points" />
     </div>
 
-    <div v-if="!loading && report" class="card pad report">
+    <FadeContent v-if="!loading && report" direction="up" :blur="true">
+    <div class="card pad report">
       <div class="report-head">
         <h2 class="section-label" style="margin:0">心情报告</h2>
         <time>{{ report.start_date }} ~ {{ report.end_date }}</time>
       </div>
 
       <div class="stats">
-        <div class="stat"><b>{{ report.total_diaries }}</b><span>篇日记</span></div>
-        <div class="stat pos"><b>{{ report.sentiment_distribution?.positive || 0 }}</b><span>积极</span></div>
-        <div class="stat neu"><b>{{ report.sentiment_distribution?.neutral || 0 }}</b><span>平静</span></div>
-        <div class="stat neg"><b>{{ report.sentiment_distribution?.negative || 0 }}</b><span>低落</span></div>
-        <div class="stat"><b>{{ report.average_intensity }}</b><span>平均强度</span></div>
+        <div class="stat"><b><CountUp :value="report.total_diaries" /></b><span>篇日记</span></div>
+        <div class="stat pos"><b><CountUp :value="report.sentiment_distribution?.positive || 0" /></b><span>积极</span></div>
+        <div class="stat neu"><b><CountUp :value="report.sentiment_distribution?.neutral || 0" /></b><span>平静</span></div>
+        <div class="stat neg"><b><CountUp :value="report.sentiment_distribution?.negative || 0" /></b><span>低落</span></div>
+        <div class="stat"><b><CountUp :value="report.average_intensity" :decimals="1" /></b><span>平均强度</span></div>
       </div>
 
       <p v-if="report.trend_summary" class="summary">{{ report.trend_summary }}</p>
@@ -47,6 +51,7 @@
         </ul>
       </div>
     </div>
+    </FadeContent>
   </div>
 </template>
 
@@ -54,6 +59,9 @@
 import { ref, onMounted } from 'vue'
 import { analysisAPI } from '../api/analysis'
 import EmotionChart from '../components/EmotionChart.vue'
+import BlurText from '../components/animate/BlurText.vue'
+import FadeContent from '../components/animate/FadeContent.vue'
+import CountUp from '../components/animate/CountUp.vue'
 
 const points = ref([])
 const report = ref(null)
@@ -108,6 +116,24 @@ onMounted(load)
   color: var(--c-text-dim);
 }
 
+.loading-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 3px 12px;
+  border-radius: 50%;
+  background: var(--c-primary);
+  animation: dot-bounce 1.2s ease-in-out infinite;
+}
+
+.loading-dot:nth-child(2) { animation-delay: 0.15s; }
+.loading-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
 .report-head {
   display: flex;
   justify-content: space-between;
@@ -130,9 +156,16 @@ onMounted(load)
 
 .stat {
   text-align: center;
-  padding: 14px 8px;
-  background: var(--c-bg);
+  padding: 16px 10px;
+  background: rgba(255, 252, 248, 0.65);
   border-radius: var(--radius-sm);
+  border: 1px solid rgba(228, 220, 208, 0.6);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(58, 52, 46, 0.06);
 }
 
 .stat b {

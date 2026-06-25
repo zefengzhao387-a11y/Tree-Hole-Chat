@@ -103,18 +103,40 @@ body {
 }
 
 .btn-primary {
-  background: var(--c-wood-deep);
+  background: linear-gradient(145deg, #5c4a38 0%, #4a3d30 100%);
   color: #f5ebe0;
+  box-shadow:
+    0 4px 14px rgba(74, 61, 48, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition:
+    background var(--transition),
+    transform var(--transition),
+    box-shadow var(--transition);
 }
-.btn-primary:hover { background: #4a3d30; }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary:hover {
+  background: linear-gradient(145deg, #4a3d30 0%, #3d3228 100%);
+  box-shadow: 0 6px 20px rgba(74, 61, 48, 0.28);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
 .btn-ghost {
-  background: transparent;
+  background: rgba(255, 252, 248, 0.5);
   color: var(--c-text-dim);
   border: 1px solid var(--c-border);
+  backdrop-filter: blur(8px);
 }
-.btn-ghost:hover { background: var(--c-bg-alt); color: var(--c-text); }
+.btn-ghost:hover {
+  background: rgba(255, 252, 248, 0.85);
+  color: var(--c-text);
+  border-color: rgba(184, 137, 94, 0.35);
+}
 
 .btn-block { width: 100%; padding: 12px; }
 
@@ -124,18 +146,22 @@ body {
   padding: 12px 14px;
   border: 1px solid var(--c-border);
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.88);
   font-family: var(--font-display);
   font-size: 0.9375rem;
   color: var(--c-text);
   outline: none;
-  transition: border-color var(--transition);
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
 }
 
 .textarea-heal { line-height: 1.85; resize: vertical; }
 
 .input-heal:focus,
-.textarea-heal:focus { border-color: var(--c-wood); }
+.textarea-heal:focus {
+  border-color: var(--c-primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(90, 122, 98, 0.12);
+}
 
 .input-heal::placeholder,
 .textarea-heal::placeholder { color: var(--c-text-muted); }

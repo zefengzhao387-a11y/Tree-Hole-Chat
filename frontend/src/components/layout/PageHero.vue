@@ -7,7 +7,7 @@
     <div class="hero-content">
       <span v-if="badge" class="hero-badge">{{ badge }}</span>
       <ShimmerTitle :tag="titleTag" :size="size">{{ title }}</ShimmerTitle>
-      <p v-if="desc" class="hero-desc">{{ desc }}</p>
+      <BlurText v-if="desc" tag="p" class="hero-desc-blur" :text="desc" animate-by="words" :delay="50" />
       <div v-if="$slots.actions" class="hero-actions">
         <slot name="actions" />
       </div>
@@ -20,6 +20,7 @@
 
 <script setup>
 import ShimmerTitle from '../ui/ShimmerTitle.vue'
+import BlurText from '../animate/BlurText.vue'
 
 defineProps({
   title: { type: String, required: true },
@@ -106,5 +107,13 @@ defineProps({
   margin-top: 20px;
   padding-top: 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hero-desc-blur {
+  margin-top: 8px;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  color: var(--c-text-dim);
+  line-height: 1.6;
 }
 </style>

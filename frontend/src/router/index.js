@@ -24,7 +24,9 @@ const routes = [
       { path: 'diary/:id/edit', name: 'DiaryEdit', component: () => import('../views/DiaryEdit.vue'), meta: { title: '编辑日记' } },
       { path: 'chat', name: 'TreeHoleChat', component: () => import('../views/TreeHoleChat.vue'), meta: { title: '树洞' } },
       { path: 'trend', name: 'EmotionTrend', component: () => import('../views/EmotionTrend.vue'), meta: { title: '心情' } },
-      { path: 'settings', name: 'Settings', component: () => import('../views/Settings.vue'), meta: { title: '设置' } },
+      { path: 'my', name: 'My', component: () => import('../views/My.vue'), meta: { title: '我的' } },
+      { path: 'my/chat/:friendId', name: 'FriendChat', component: () => import('../views/FriendChat.vue'), meta: { title: '好友聊天' } },
+      { path: 'settings', redirect: '/my' },
     ],
   },
 ]

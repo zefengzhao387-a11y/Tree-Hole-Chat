@@ -17,11 +17,13 @@
 
       <div class="chat-body" ref="bodyRef">
         <div v-if="!messages.length" class="welcome">
-          <p class="welcome-title">嗨，我是小树</p>
+          <TextType tag="p" class="welcome-title" text="嗨，我是小树" :speed="70" />
           <p class="welcome-desc">一个安静倾听的树洞。你说的话会被保密，我也会结合你的日记来理解你。</p>
-          <div class="prompts">
-            <button v-for="p in prompts" :key="p" class="prompt" @click="usePrompt(p)">{{ p }}</button>
-          </div>
+          <FadeContent :delay="400" direction="up">
+            <div class="prompts">
+              <button v-for="p in prompts" :key="p" class="prompt" @click="usePrompt(p)">{{ p }}</button>
+            </div>
+          </FadeContent>
         </div>
 
         <div v-for="m in messages" :key="m.id" class="msg" :class="m.role">
@@ -71,6 +73,8 @@ import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { chatAPI } from '../api/chat'
 import ChatTypingIndicator from '../components/ChatTypingIndicator.vue'
+import TextType from '../components/animate/TextType.vue'
+import FadeContent from '../components/animate/FadeContent.vue'
 
 const messages = ref([])
 const input = ref('')
@@ -263,7 +267,11 @@ onUnmounted(stopTypingHints)
   flex-direction: column;
   height: calc(100vh - 116px);
   overflow: hidden;
-  background: var(--c-surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
 .chat-head {
@@ -271,23 +279,27 @@ onUnmounted(stopTypingHints)
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--c-border-light);
+  border-bottom: 1px solid rgba(228, 220, 208, 0.5);
+  background: rgba(255, 252, 248, 0.45);
 }
 
 .chat-info { display: flex; align-items: center; gap: 12px; }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-handwrite);
   font-size: 1rem;
   color: var(--c-wood-deep);
-  background: rgba(255, 248, 240, 0.9);
-  border: 1px solid rgba(184, 137, 94, 0.25);
+  background: linear-gradient(145deg, rgba(255, 248, 240, 0.95), rgba(238, 244, 239, 0.85));
+  border: 1px solid rgba(90, 122, 98, 0.25);
   border-radius: 50%;
+  box-shadow:
+    0 2px 10px rgba(90, 122, 98, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .chat-info h2 {
@@ -329,51 +341,61 @@ onUnmounted(stopTypingHints)
   display: flex;
   flex-direction: column;
   gap: 16px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(90, 122, 98, 0.04), transparent 60%);
 }
 
-.welcome { text-align: center; padding: 24px 0; }
+.welcome {
+  text-align: center;
+  padding: 32px 16px 24px;
+  margin: auto 0;
+}
 
 .welcome-title {
   font-family: var(--font-handwrite);
-  font-size: 1.375rem;
+  font-size: 1.5rem;
   font-weight: 400;
   color: var(--c-wood-deep);
   letter-spacing: 0.1em;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .welcome-desc {
   font-family: var(--font-ui);
   font-size: 0.875rem;
   color: var(--c-text-dim);
-  line-height: 1.6;
+  line-height: 1.7;
   max-width: 320px;
-  margin: 0 auto 20px;
+  margin: 0 auto 24px;
 }
 
 .prompts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
 }
 
 .prompt {
-  padding: 8px 14px;
-  border: 1px solid var(--c-border);
+  padding: 9px 16px;
+  border: 1px solid rgba(228, 220, 208, 0.85);
   border-radius: 100px;
-  background: var(--c-bg);
+  background: rgba(255, 252, 248, 0.75);
+  backdrop-filter: blur(6px);
   font-family: var(--font-ui);
   font-size: 0.8125rem;
   color: var(--c-text-dim);
   cursor: pointer;
-  transition: border-color var(--transition);
+  transition: all var(--transition);
+  box-shadow: 0 1px 6px rgba(58, 52, 46, 0.04);
 }
 
 .prompt:hover {
-  border-color: var(--c-wood);
+  border-color: var(--c-primary);
   color: var(--c-wood-deep);
-  background: rgba(255, 252, 248, 0.9);
+  background: rgba(255, 252, 248, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(90, 122, 98, 0.1);
 }
 
 .msg { display: flex; flex-direction: column; max-width: 85%; }
@@ -416,59 +438,76 @@ onUnmounted(stopTypingHints)
 }
 
 .bubble {
-  padding: 10px 14px;
-  border-radius: 14px;
+  padding: 11px 15px;
+  border-radius: 16px;
   font-size: 0.9375rem;
-  line-height: 1.65;
+  line-height: 1.68;
+  box-shadow: 0 2px 8px rgba(58, 52, 46, 0.05);
 }
 
 .msg.user .bubble {
-  background: var(--c-wood-deep);
+  background: linear-gradient(145deg, #5c4a38 0%, #4a3d30 100%);
   color: #f5ebe0;
   border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 14px rgba(74, 61, 48, 0.2);
 }
 
 .msg.assistant .bubble {
   background: rgba(255, 252, 248, 0.92);
   color: var(--c-text);
-  border: 1px solid rgba(228, 220, 208, 0.6);
+  border: 1px solid rgba(228, 220, 208, 0.65);
   border-bottom-left-radius: 4px;
 }
 
 .ref {
   font-family: var(--font-ui);
   font-size: 0.6875rem;
-  color: var(--c-text-muted);
-  margin-top: 4px;
+  color: var(--c-primary);
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(90, 122, 98, 0.08);
+  display: inline-block;
 }
 
 .chat-foot {
   display: flex;
   gap: 10px;
   padding: 14px 16px;
-  border-top: 1px solid var(--c-border-light);
+  border-top: 1px solid rgba(228, 220, 208, 0.5);
   align-items: flex-end;
+  background: rgba(255, 252, 248, 0.55);
+  backdrop-filter: blur(10px);
 }
 
 .chat-input {
   flex: 1;
-  padding: 10px 14px;
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-sm);
+  padding: 11px 15px;
+  border: 1px solid rgba(228, 220, 208, 0.85);
+  border-radius: 20px;
   font-family: var(--font-display);
   font-size: 0.9375rem;
   line-height: 1.5;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.88);
   color: var(--c-text);
   outline: none;
   resize: none;
-  min-height: 42px;
+  min-height: 44px;
   max-height: 100px;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
 
-.chat-input:focus { border-color: var(--c-wood); }
+.chat-input:focus {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(90, 122, 98, 0.12);
+}
 
-.send { flex-shrink: 0; padding: 10px 18px; min-width: 88px; }
+.send {
+  flex-shrink: 0;
+  padding: 11px 20px;
+  min-width: 88px;
+  border-radius: 20px;
+}
 
 .send-loading {
   display: inline-flex;

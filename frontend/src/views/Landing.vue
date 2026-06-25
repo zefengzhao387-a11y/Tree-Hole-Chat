@@ -11,15 +11,14 @@
       <div class="brand-row">
         <img src="/logo.png" alt="" class="brand-logo" aria-hidden="true" />
         <div class="brand-text">
-          <h1 class="brand-title" aria-label="解忧树洞">
-            <span
-              v-for="(char, i) in brandChars"
-              :key="char"
-              class="brand-char"
-              :style="{ '--i': i }"
-            >{{ char }}</span>
-          </h1>
-          <p class="brand-tagline">心事有所寄，烦忧有人听</p>
+          <BlurText
+            tag="h1"
+            class="brand-title"
+            text="解忧树洞"
+            animate-by="chars"
+            :delay="100"
+          />
+          <ShinyText tag="p" class="brand-tagline" text="心事有所寄，烦忧有人听" :speed="4" />
           <span class="brand-accent" aria-hidden="true" />
         </div>
       </div>
@@ -40,11 +39,26 @@
         v-for="(f, i) in features"
         :key="f.title"
         class="feature-node"
-        :class="[f.side, 'node-' + i]"
+        :class="[
+          f.side,
+          'node-' + i,
+          { dimmed: !!activeFeature },
+        ]"
         :style="nodeStyle(f.anchor)"
       >
-        <h3>{{ f.title }}</h3>
-        <p>{{ f.desc }}</p>
+        <button
+          type="button"
+          class="feature-card-btn"
+          :aria-label="`了解${f.title}`"
+          :disabled="!!activeFeature"
+          @click="onFeatureClick(i, $event)"
+        >
+          <div class="feature-card">
+            <h3>{{ f.title }}</h3>
+            <p>{{ f.desc }}</p>
+            <span class="tap-hint">点击了解更多</span>
+          </div>
+        </button>
       </article>
 
       <div class="tree-core">
@@ -116,8 +130,18 @@
     </section>
 
     <footer class="footer">
-      <p>每一份心情，都值得被温柔以待</p>
+      <FadeContent direction="up" :delay="200">
+        <p>每一份心情，都值得被温柔以待</p>
+      </FadeContent>
     </footer>
+
+    <FeatureDetailModal
+      v-if="activeFeature"
+      :feature="activeFeature"
+      :origin="expandOrigin"
+      @close="closeDetail"
+      @go="goFeature"
+    />
   </div>
 </template>
 
@@ -125,14 +149,20 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import BlurText from '../components/animate/BlurText.vue'
+import ShinyText from '../components/animate/ShinyText.vue'
+import FadeContent from '../components/animate/FadeContent.vue'
+import FeatureDetailModal from '../components/landing/FeatureDetailModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 
 const treeHeroSrc = `${import.meta.env.BASE_URL}landing/tree-hero.png`
 const showTreeImage = ref(true)
-const brandChars = ['解', '忧', '树', '洞']
 const isEntering = ref(false)
+
+const activeFeature = ref(null)
+const expandOrigin = ref(null)
 
 function onTreeImageError() {
   showTreeImage.value = false
@@ -142,25 +172,69 @@ const features = [
   {
     title: '写日记',
     side: 'left',
+    icon: '✍️',
     desc: '随时写下生活片段与心底感受，把每一刻真实情绪留在这里',
+    detailTitle: '把心事安放在纸页之间',
+    detailIntro: '日记是本系统一切智能体验的起点。你可以自由记录标题、正文与心情标签，系统会安全保存并在后台完成情感分析与向量索引，为后续树洞对话提供「记得你」的私人记忆。',
+    highlights: [
+      '支持新建、编辑、删除与分页浏览，按心情筛选历史记录',
+      '保存后自动调用 DeepSeek 进行结构化情感分析',
+      '日记内容自动分块向量化，写入 Chroma 私有知识库',
+    ],
+    tech: ['SQLite', 'LLM 情感分析', 'RAG 索引'],
+    route: '/diary/new',
+    cta: '开始写日记',
     anchor: { x: 17, y: 26 },
   },
   {
     title: 'AI 读心',
     side: 'left',
+    icon: '🌿',
     desc: '智能读懂日记文字，分析你话语背后的情感与心绪变化',
+    detailTitle: '读懂文字背后的情绪',
+    detailIntro: '基于大语言模型的情感分析模块，会从你的日记中识别主情绪、情感极性、强度、关键词与温暖建议，帮助你看清自己当下的内心状态。',
+    highlights: [
+      '输出主情绪、八维情感得分、积极/消极/中性极性',
+      '生成一句话摘要与基于状态的短建议',
+      '结果持久化存储，可在趋势页汇总展示',
+    ],
+    tech: ['DeepSeek', 'Prompt Engineering', 'JSON 结构化输出'],
+    route: '/diary',
+    cta: '查看我的日记',
     anchor: { x: 15, y: 54 },
   },
   {
     title: '解忧树洞',
     side: 'right',
+    icon: '🌳',
     desc: '向小树洞倾诉烦恼与秘密，获得温柔回应与安静陪伴',
+    detailTitle: '会记得你的树洞伙伴',
+    detailIntro: '「小树」不是空泛的聊天机器人。系统会从你的历史日记中检索相关片段，结合对话记忆生成共情式回复，并在合适时自然引用你曾写下的故事。',
+    highlights: [
+      'RAG 混合检索：向量语义 + BM25 关键词，按用户隔离',
+      'SSE 流式输出，打字机式实时回复',
+      '标注关联日记编号，回复有据可查',
+    ],
+    tech: ['LangChain RAG', 'Chroma', 'SSE 流式'],
+    route: '/chat',
+    cta: '进入树洞对话',
     anchor: { x: 83, y: 28 },
   },
   {
     title: '心情轨迹',
     side: 'right',
+    icon: '📈',
     desc: '串联日记里的情绪起伏，看见自己心情如何流动与生长',
+    detailTitle: '看见情绪的流动',
+    detailIntro: '按日期范围统计你的日记情感数据，以折线图展示情绪强度变化，并由 LLM 生成区间情感总结与温柔建议，帮助你在更长的时间尺度上理解自己。',
+    highlights: [
+      'ECharts 可视化情绪强度曲线',
+      '积极 / 消极 / 中性分布统计',
+      'LLM 生成区间情感报告与建议',
+    ],
+    tech: ['ECharts', '情感趋势 API', 'LLM 报告'],
+    route: '/trend',
+    cta: '查看心情轨迹',
     anchor: { x: 85, y: 56 },
   },
 ]
@@ -209,12 +283,39 @@ function fallLeafStyle(n, layer = 'above') {
 }
 
 function enterTreeHole() {
-  if (isEntering.value) return
+  if (isEntering.value || activeFeature.value) return
   isEntering.value = true
   window.setTimeout(() => {
     router.push(auth.isLoggedIn ? '/diary' : '/auth')
   }, 880)
 }
+
+function onFeatureClick(index, event) {
+  if (activeFeature.value) return
+  const rect = event.currentTarget.getBoundingClientRect()
+  expandOrigin.value = {
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
+    height: rect.height,
+  }
+  activeFeature.value = features[index]
+}
+
+function closeDetail() {
+  activeFeature.value = null
+  expandOrigin.value = null
+}
+
+function goFeature(route) {
+  closeDetail()
+  if (!auth.isLoggedIn && route !== '/') {
+    router.push('/auth')
+    return
+  }
+  router.push(route)
+}
+
 </script>
 
 <style scoped>
@@ -404,9 +505,7 @@ function enterTreeHole() {
 }
 
 .brand-title {
-  display: flex;
-  align-items: center;
-  gap: 0.03em;
+  display: block;
   font-family: var(--font-handwrite);
   font-size: clamp(2.125rem, 5.5vw, 2.875rem);
   font-weight: 400;
@@ -414,29 +513,18 @@ function enterTreeHole() {
   letter-spacing: 0.02em;
 }
 
-.brand-char {
-  display: inline-block;
-  color: var(--wood-deep);
+.brand-title :deep(.blur-text-segment) {
+  color: var(--c-wood-deep);
   text-shadow: var(--grass-shadow);
-  animation:
-    brand-char-in 0.7s cubic-bezier(0.34, 1.2, 0.64, 1) backwards,
-    brand-char-sway 6s ease-in-out infinite;
-  animation-delay: calc(var(--i) * 0.1s), calc(var(--i) * 0.45s + 0.7s);
 }
 
-.brand-char:nth-child(1) { color: #5c4a38; }
-.brand-char:nth-child(2) { color: #4a3d30; }
-.brand-char:nth-child(3) { color: #526848; }
-.brand-char:nth-child(4) { color: #5c4a38; }
-
 .brand-tagline {
+  display: block;
   margin-top: 12px;
   padding-left: 2px;
   font-family: var(--font-ui);
   font-size: 0.8125rem;
-  color: #8a8074;
   letter-spacing: 0.22em;
-  animation: brand-tagline-in 0.8s ease 0.45s backwards;
 }
 
 .brand-accent {
@@ -670,31 +758,38 @@ function enterTreeHole() {
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-/* ── 功能标签 · 淡化底、文字为主 ── */
+/* ── 功能卡片 ── */
+@keyframes card-sway {
+  0%, 100% { transform: translate(calc(-50% + 6px), -50%) translateY(0); }
+  50% { transform: translate(calc(-50% + 6px), -50%) translateY(-6px); }
+}
+
+@keyframes card-sway-left {
+  0%, 100% { transform: translate(calc(-50% - 6px), -50%) translateY(0); }
+  50% { transform: translate(calc(-50% - 6px), -50%) translateY(-6px); }
+}
+
 .feature-node {
   position: absolute;
   z-index: 4;
   width: max-content;
-  max-width: 248px;
-  padding: 16px 20px;
-  text-align: center;
-  border-radius: 12px;
-  background: rgba(255, 252, 248, 0.72);
-  border: none;
-  box-shadow: 0 2px 12px rgba(58, 52, 46, 0.04);
-  backdrop-filter: blur(4px);
+  max-width: 236px;
   animation: card-sway 7s ease-in-out infinite;
-  transition: background 0.2s, box-shadow 0.2s;
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+
+.feature-node.dimmed {
+  opacity: 0.35;
+  filter: blur(1px);
+  pointer-events: none;
 }
 
 .feature-node.left {
-  text-align: right;
-  transform: translate(calc(-50% - 6px), -50%);
   animation-name: card-sway-left;
 }
 
 .feature-node.right {
-  transform: translate(calc(-50% + 6px), -50%);
+  animation-name: card-sway;
 }
 
 .feature-node.node-0 { animation-delay: 0s; }
@@ -702,41 +797,88 @@ function enterTreeHole() {
 .feature-node.node-2 { animation-delay: 0.6s; }
 .feature-node.node-3 { animation-delay: 1.8s; }
 
-.feature-node:hover {
+.feature-card-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.feature-card-btn:disabled {
+  cursor: default;
+}
+
+.feature-card {
+  width: 100%;
+  min-width: 196px;
+  max-width: 236px;
+  padding: 14px 18px 12px;
+  border-radius: 14px;
+  overflow: hidden;
   background: rgba(255, 252, 248, 0.88);
-  box-shadow: 0 4px 16px rgba(58, 52, 46, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    0 4px 20px rgba(58, 52, 46, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(10px);
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
 
-.feature-node.left:hover { transform: translate(calc(-50% - 8px), -52%); }
-.feature-node.right:hover { transform: translate(calc(-50% + 8px), -52%); }
-
-@keyframes card-sway {
-  0%, 100% { transform: translate(calc(-50% + 6px), -50%); }
-  50% { transform: translate(calc(-50% + 10px), -50%); }
+.feature-node.left .feature-card {
+  text-align: right;
 }
 
-@keyframes card-sway-left {
-  0%, 100% { transform: translate(calc(-50% - 6px), -50%); }
-  50% { transform: translate(calc(-50% - 10px), -50%); }
+.feature-node.right .feature-card {
+  text-align: center;
+}
+
+.feature-card-btn:hover:not(:disabled) .feature-card {
+  transform: translateY(-3px);
+  box-shadow:
+    0 10px 28px rgba(58, 52, 46, 0.12),
+    0 0 20px rgba(90, 122, 98, 0.08);
 }
 
 .feature-node h3 {
   font-family: var(--font-handwrite);
-  font-size: 1.625rem;
+  font-size: 1.375rem;
   font-weight: 400;
   color: #3a342e;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   letter-spacing: 0.02em;
-  line-height: 1.3;
+  line-height: 1.25;
   text-shadow: var(--grass-shadow);
 }
 
 .feature-node p {
   font-family: var(--font-ui);
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   color: #6a6258;
-  line-height: 1.55;
-  opacity: 0.9;
+  line-height: 1.5;
+  opacity: 0.92;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.tap-hint {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-ui);
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  color: var(--c-primary);
+  opacity: 0.8;
+}
+
+.feature-node.left .tap-hint {
+  text-align: right;
 }
 
 .footer {
@@ -764,9 +906,7 @@ function enterTreeHole() {
   .fall-leaf,
   .breeze-wave,
   .hole-cue,
-  .brand-char,
   .brand-logo,
-  .brand-tagline,
   .brand-accent {
     animation: none !important;
   }
@@ -797,13 +937,20 @@ function enterTreeHole() {
   }
 
   .feature-node {
-    max-width: 208px;
-    padding: 14px 16px;
+    max-width: 200px;
   }
 
-  .feature-node h3 { font-size: 1.375rem; }
+  .feature-card {
+    min-width: 172px;
+    max-width: 200px;
+    padding: 12px 14px 10px;
+  }
 
-  .feature-node p { font-size: 0.8125rem; line-height: 1.5; }
+  .feature-node h3 { font-size: 1.25rem; }
+
+  .feature-node p { font-size: 0.75rem; line-height: 1.45; -webkit-line-clamp: 2; }
+
+  .tap-hint { font-size: 0.5625rem; margin-top: 6px; }
 
   .node-0 { left: 8% !important; top: 20% !important; }
   .node-1 { left: 6% !important; top: 48% !important; }
