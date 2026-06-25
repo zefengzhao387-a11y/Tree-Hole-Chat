@@ -1,11 +1,19 @@
 """
 日记管理业务逻辑
 """
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 from sqlalchemy.orm import selectinload
 from app.models.diary import Diary
 from app.models.emotion_analysis import EmotionAnalysis
+
+
+def _parse_inclusive_date_range(start_date: str, end_date: str) -> tuple[datetime, datetime]:
+    """将 YYYY-MM-DD 转为含首尾全天的查询区间 [start, end+1day)"""
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_exclusive = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+    return start_dt, end_exclusive
 
 
 async def get_diaries(
@@ -100,13 +108,14 @@ async def get_diaries_in_range(
     start_date: str,
     end_date: str,
 ) -> list[Diary]:
+    start_dt, end_exclusive = _parse_inclusive_date_range(start_date, end_date)
     query = (
         select(Diary)
         .options(selectinload(Diary.emotion_analysis))
         .where(
             Diary.user_id == user_id,
-            Diary.created_at >= start_date,
-            Diary.created_at <= end_date,
+            Diary.created_at >= start_dt,
+            Diary.created_at < end_exclusive,
         )
         .order_by(Diary.created_at)
     )

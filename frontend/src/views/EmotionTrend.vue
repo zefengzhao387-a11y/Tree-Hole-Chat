@@ -59,11 +59,18 @@ const points = ref([])
 const report = ref(null)
 const loading = ref(true)
 
+function formatLocalDate(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 function defaultRange() {
   const e = new Date()
   const s = new Date()
   s.setDate(s.getDate() - 30)
-  return [s.toISOString().split('T')[0], e.toISOString().split('T')[0]]
+  return [formatLocalDate(s), formatLocalDate(e)]
 }
 
 const range = ref(defaultRange())

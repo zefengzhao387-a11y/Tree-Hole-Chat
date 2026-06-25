@@ -261,7 +261,7 @@ onUnmounted(stopTypingHints)
 .chat-box {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 112px);
+  height: calc(100vh - 116px);
   overflow: hidden;
   background: var(--c-surface);
 }

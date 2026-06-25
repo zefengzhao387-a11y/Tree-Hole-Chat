@@ -119,20 +119,17 @@ def analyze_emotion(diary_content: str) -> dict:
     使用 LLM 对日记内容进行情感分析
     返回结构化分析结果
     """
-    llm = get_llm(temperature=0.3, streaming=False)
-    prompt = EMOTION_ANALYSIS_PROMPT.format(diary_content=diary_content)
-
     try:
+        llm = get_llm(temperature=0.3, streaming=False)
+        prompt = EMOTION_ANALYSIS_PROMPT.format(diary_content=diary_content)
+
         response = llm.invoke([HumanMessage(content=prompt)])
         content = response.content.strip()
 
-        # 尝试解析 JSON（处理可能的 markdown 代码块包裹）
         json_match = re.search(r'\{[\s\S]*\}', content)
         if json_match:
-            result = json.loads(json_match.group())
-            return result
-        else:
-            return _get_default_analysis()
+            return json.loads(json_match.group())
+        return _get_default_analysis()
 
     except Exception as e:
         print(f"情感分析失败: {e}")

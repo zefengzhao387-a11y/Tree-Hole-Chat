@@ -9,10 +9,19 @@ from app.models.emotion_analysis import EmotionAnalysis
 from app.rag.chain import analyze_emotion
 
 
+async def ensure_diary_emotion(db: AsyncSession, diary: Diary) -> EmotionAnalysis | None:
+    """确保日记有情感分析记录，缺失时补跑分析"""
+    if diary.emotion_analysis:
+        return diary.emotion_analysis
+    try:
+        analysis = await analyze_diary_emotion(db, diary)
+        await db.refresh(diary, attribute_names=["emotion_analysis"])
+        return analysis
+    except Exception:
+        return diary.emotion_analysis
+
+
 async def analyze_diary_emotion(db: AsyncSession, diary: Diary) -> EmotionAnalysis:
-    """
-    对指定日记执行情感分析并保存结果
-    """
     # 调用 LLM 进行情感分析
     result = analyze_emotion(diary.content)
 

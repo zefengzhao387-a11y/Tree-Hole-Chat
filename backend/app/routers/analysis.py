@@ -62,6 +62,7 @@ async def get_emotion_trend(
 
     points = []
     for d in diaries:
+        await emotion_analyzer.ensure_diary_emotion(db, d)
         if d.emotion_analysis:
             points.append(EmotionPoint(
                 date=d.created_at.strftime("%Y-%m-%d %H:%M"),
@@ -101,6 +102,9 @@ async def get_emotion_report(
             trend_summary="该时间段暂无日记记录",
             suggestions=["开始写日记吧，记录心情是了解自己的第一步~"],
         )
+
+    for d in diaries:
+        await emotion_analyzer.ensure_diary_emotion(db, d)
 
     # 统计
     pos = neg = neu = 0
